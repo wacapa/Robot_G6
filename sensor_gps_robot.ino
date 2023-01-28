@@ -14,27 +14,27 @@
 
  
 
-//Bluetooth pins// 
+//Pines bluetooth
 
-#define BLE_TxD 6 
+#define TXD_blu 6 
 
-#define BLE_RxD 5 
+#define RXD_blu 5 
 
-#define BLE_Baud 115200 
-
- 
-
-//GPS pins 
-
-#define GPS_TxD 11 
-
-#define GPS_RxD 12 
-
-#define GPS_Baud 4800 
+#define baudios_blu 115200 
 
  
 
-//Water sensor Pins 
+//Pines GPS 
+
+#define GPS_TXD 11 
+
+#define GPS_RXD 12 
+
+#define baudios_gps 4800 
+
+ 
+
+//Pines para los sensores
 
 #define Temperature_sensor A0 
 
@@ -42,49 +42,27 @@
 
 #define PH_sensor A2 
 
-#define Battery_Voltage_sensor_for_board A3 
+#define sensor_voltaje_board A3 
 
-#define Battery_Ampere_sensor_for_board A4 
+#define sensor_amperaje_board A4 
 
-#define Battery_Voltage_sensor_for_esc A5 
+#define sensor_voltaje_esc A5 
 
-#define Battery_Ampere_sensor_for_esc A6 
-
- 
+#define sensor_amperaje_esc A6 
 
 
-
- 
-
-
-
- 
-
-//GPS Setup 
 
 TinyGPSPlus gps; 
 
-SoftwareSerial gps_Serial(GPS_RxD, GPS_TxD); 
+SoftwareSerial gps_Serial(GPS_RXD, GPS_TXD); 
 
- 
+SoftwareSerial bluetooth_Serial(RXD_blu, TXD_blu); 
 
-// BLE Setup 
-
-SoftwareSerial bluetooth_Serial(BLE_RxD, BLE_TxD); 
-
- 
-
- //Temperature chip i/o 
 
 int DS18S20_Pin = A0; 
 
 OneWire ds(DS18S20_Pin);  
 
- 
-
-// Global variables 
-
-//[GPS_lat,GPS_lng, sensor_1,sensor_2,sensor_3] 
 
 float sensor_data[9]; 
 
@@ -96,25 +74,25 @@ double intData[2];
 
  
 
-int ind1; // , locations 
+int ind1; 
 
 int ind2; 
 
  
-
+//Variables para los sensores
 float turbidity_sensor_data; 
 
 float ph_sensor_data; 
 
 float temperature_sensor_data; 
 
-float battery_voltage_sensor_data_for_board; 
+float sensor_vol_board_datos; 
 
-float battery_ampere_sensor_data_for_board; 
+float sensor_amp_board_datos; 
 
-float battery_voltage_sensor_data_for_esc; 
+float sensor_vol_esc_datos; 
 
-float battery_ampere_sensor_data_for_esc; 
+float sensor_amp_esc_datos; 
 
  
 
@@ -126,22 +104,18 @@ bool  gps_mode=false;
 
  
 
-//ESC::variables  
+//ESC variables  
 
-int minPulseRate = 768; 
+int pulso_min = 768; 
 
-int maxPulseRate = 2400; 
-
- 
-
-int safety_value =  5; 
+int pulso_max = 2400; 
 
  
 
- 
+int valorE =  5; 
 
+ 
 float getTemp(){ 
-
 
 
   byte data[12]; 
@@ -232,11 +206,10 @@ float getTemp(){
  
 
  
-
+//función para leer sensores
 void sensor_data_reading() 
 
-{ 
-
+{
 
 
   turbidity_sensor_data = analogRead(Turbidity_sensor)/1024.0*5.0; 
@@ -265,9 +238,9 @@ void sensor_data_reading()
 
   temperature_sensor_data = getTemp(); 
 
-  battery_voltage_sensor_data_for_board = analogRead(Battery_Voltage_sensor_for_board)/12.99; 
+  sensor_vol_board_datos = analogRead(sensor_voltaje_board)/12.99; 
 
-  battery_voltage_sensor_data_for_esc = analogRead(Battery_Voltage_sensor_for_esc)/12.99; 
+  sensor_vol_esc_datos = analogRead(sensor_voltaje_esc)/12.99; 
 
 
  
@@ -276,19 +249,19 @@ void sensor_data_reading()
 
   sensor_data[1] = gps_lng; // GPS_lat 
 
-  sensor_data[2] = temperature_sensor_data; // Temperature  
+  sensor_data[2] = temperature_sensor_data; 
 
-  sensor_data[3] = turbidity_sensor_data; // Turbidity_data 
+  sensor_data[3] = turbidity_sensor_data;  
 
-  sensor_data[4] = ph_sensor_data; // PH_sensor_data 
+  sensor_data[4] = ph_sensor_data;  
 
-  sensor_data[5] = battery_voltage_sensor_data_for_board; // voltage_sensor_data 
+  sensor_data[5] = sensor_vol_board_datos; 
 
-  sensor_data[6] = battery_ampere_sensor_data_for_board; // ampere_sensor_data 
+  sensor_data[6] = sensor_amp_board_datos; 
 
-  sensor_data[7] = battery_voltage_sensor_data_for_esc; 
+  sensor_data[7] = sensor_vol_esc_datos; 
 
-  sensor_data[8] = battery_ampere_sensor_data_for_esc;  
+  sensor_data[8] = sensor_amp_esc_datos;  
 
  
 
@@ -302,23 +275,16 @@ void sensor_data_reading()
 
   bluetooth_Serial.print(sensor_data[4]); bluetooth_Serial.print(F(";")); // PH_sensor_data 
 
-  bluetooth_Serial.print(sensor_data[5]); bluetooth_Serial.print(F(";")); // voltage_sensor_data_for_board 
+  bluetooth_Serial.print(sensor_data[5]); bluetooth_Serial.print(F(";")); 
 
-  bluetooth_Serial.print(sensor_data[7]); bluetooth_Serial.print(F(";")); // voltage_sensor_data_for_esc 
+  bluetooth_Serial.print(sensor_data[7]); bluetooth_Serial.print(F(";"));  
 
 
 
   bluetooth_Serial.print("\n"); 
 
- 
-
-
 
 } 
-
- 
-
-
 
 int normalizeThrottle(int value) { 
 
@@ -336,52 +302,42 @@ int normalizeThrottle(int value) {
 
  
 
- 
-
 void setup() { 
 
-   
 
-
-
+  //Serial para bluetooth
   Serial.begin(9600); 
 
   Serial.setTimeout(50); 
 
  
 
-  //BLE Serial 
-
-  bluetooth_Serial.begin(BLE_Baud); 
+  bluetooth_Serial.begin(baudios_blu); 
 
   bluetooth_Serial.setTimeout(50); 
 
  
 
 
-  gps_Serial.begin(GPS_Baud); 
+  gps_Serial.begin(baudios_gps); 
 
   gps_Serial.setTimeout(100); 
 
 
-
- 
-
-
-
-  pinMode(Temperature_sensor,INPUT); 
+ //Input para sensores 
+ pinMode(Temperature_sensor,INPUT); 
 
   pinMode(Turbidity_sensor,INPUT); 
 
   pinMode(PH_sensor,INPUT); 
 
-  pinMode(Battery_Voltage_sensor_for_board,INPUT); 
+  pinMode(sensor_voltaje_board,INPUT); 
 
-  pinMode(Battery_Ampere_sensor_for_board,INPUT); 
+  pinMode(sensor_amperaje_board,INPUT); 
 
-  pinMode(Battery_Voltage_sensor_for_esc,INPUT); 
+  pinMode(sensor_voltaje_esc,INPUT); 
 
-  pinMode(Battery_Ampere_sensor_for_esc,INPUT); 
+  pinMode(sensor_amperaje_esc,INPUT); 
 
 
 
