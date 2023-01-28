@@ -8,40 +8,34 @@
 
  
 
-//Bluetooth pins// 
+// Pines para comunicación bluetooth
 
-#define BLE_TxD 6 
+#define TXD_blu 6 
 
-#define BLE_RxD 5 
+#define RXD_blu 5 
 
-#define BLE_Baud 9600 
-
- 
-
-//GPS pins 
+#define Baudios_blu 9600 
 
  
 
-//ESC Pins 
 
-#define esc_left_Pin 4
+//Pines para módulo ESC
 
-#define esc_right_Pin 8 
+#define esc_der 4
+
+#define esc_iz 8 
 
  
  
 
-// BLE Setup 
 
-SoftwareSerial bluetooth_Serial(BLE_RxD, BLE_TxD); 
+SoftwareSerial bluetooth_Serial(RXD_blu, TXD_blu); 
 
- 
 
-//ESC Setup 
 
-Servo esc_left;   
+Servo esc_izquierdo;   
 
-Servo esc_right; 
+Servo esc_derecho; 
 
  
 
@@ -54,54 +48,48 @@ int ind1;
 
 int ind2; 
 
-String  thrust_left_ccw; 
+String  giro_iz; 
 
-String  thrust_right_cw; 
+String  giro_der; 
+
+ 
+
+//Pulsos minimo y máximo 
+
+int pulsomin = 768; 
+
+int pulsomax = 2400; 
+
+ 
+
+int valorE =  5; 
+
+ 
+//rango para pulso de paro y limite maximo encendido
+int pararPulso = 1060 + valorE; 
+
+int pulsoLimite = 1860 - valorE; 
+
+ 
+ 
+//variables para velocidad de los propulsores 
+int vel_iz = 0; 
+
+int vel_der = 0; 
+
+int vel_iz_nuevo = 0; 
+
+int vel_der_nuevo = 0; 
+
+ 
+float peso1 = 1; 
+
+float peso2 = 1; 
 
  
 
 
-
-int minPulseRate = 768; 
-
-int maxPulseRate = 2400; 
-
- 
-
-int safety_value =  5; 
-
- 
-
-int stop_RC_Puls = 1060 + safety_value; 
-
-int full_RC_Puls = 1860 - safety_value; 
-
- 
-
-int throttleChangeDelay = 100; 
-
- 
-
-int left_initial_vel = 0; 
-
-int right_initial_vel = 0; 
-
-int new_left_initial_vel = 0; 
-
-int new_right_initial_vel = 0; 
-
- 
-
-
-
-float weight_CW = 1; 
-
-float weight_CCW = 1; 
-
- 
-
-
-
+//funcion de normalizacion
 int normalizeThrottle(int value) { 
 
   if( value < -100 ) 
@@ -123,28 +111,28 @@ int normalizeThrottle(int value) {
 void setup() { 
 
    
-
+  //Inicilización de las variables en void setup()
   Serial.begin(9600); 
 
   Serial.setTimeout(50); 
 
   //BLE Serial 
 
-  bluetooth_Serial.begin(BLE_Baud); 
+  bluetooth_Serial.begin(Baudios_blu); 
 
   bluetooth_Serial.setTimeout(50); 
 
    
+  //control de modulos esc con pulso minimo y maximo
+  esc_izquierdo.attach(esc_der,pulsomin,pulsomax); 
 
-  esc_left.attach(esc_left_Pin,minPulseRate,maxPulseRate); 
-
-  esc_right.attach(esc_right_Pin,minPulseRate,maxPulseRate); 
+  esc_derecho.attach(esc_iz,pulsomin,pulsomax); 
 
      
+  //escritura de los pulsos 
+  esc_izquierdo.write(map(0,-100,100,pulsoLimite,pararPulso)); 
 
-  esc_left.write(map(0,-100,100,full_RC_Puls,stop_RC_Puls)); 
-
-  esc_right.write(map(0,-100,100,stop_RC_Puls,full_RC_Puls)); 
+  esc_derecho.write(map(0,-100,100,pararPulso,pulsoLimite)); 
 
 } 
 
@@ -157,41 +145,42 @@ void loop() {
   {  
 
  
+    //inicialiazión de variables 
+    String valorA; 
 
-    String thrust_value; 
-
-    thrust_value = bluetooth_Serial.readString();    
+    valorA = bluetooth_Serial.readString();    
 
 
 
-    ind1 = thrust_value.indexOf(';');  
+    ind1 = valorA.indexOf(';');  
 
-    thrust_left_ccw = thrust_value.substring(0, ind1); 
+    giro_iz = valorA.substring(0, ind1); 
 
-    ind2 = thrust_value.indexOf(';',ind1+1); 
+    ind2 = valorA.indexOf(';',ind1+1); 
 
-    thrust_right_cw = thrust_value.substring(ind1+1); 
+    giro_der = valorA.substring(ind1+1); 
 
      
 
+    //control propulsor izquierdo
+    vel_iz_nuevo = giro_iz.toInt(); 
 
-    new_left_initial_vel = thrust_left_ccw.toInt(); 
+    vel_iz = normalizeThrottle(vel_iz_nuevo); 
 
-    left_initial_vel = normalizeThrottle(new_left_initial_vel); 
-
-    left_initial_vel = map(left_initial_vel,-100,100,full_RC_Puls,stop_RC_Puls); 
+    vel_iz = map(vel_iz,-100,100,pulsoLimite,pararPulso); 
 
 
 
-    new_right_initial_vel = thrust_right_cw.toInt(); 
+   //control propulsor derecho 
+   vel_der_nuevo = giro_der.toInt(); 
 
-    right_initial_vel = normalizeThrottle(new_right_initial_vel); 
+    vel_der = normalizeThrottle(vel_der_nuevo); 
 
-    right_initial_vel = map(right_initial_vel,-100,100,stop_RC_Puls,full_RC_Puls); 
+    vel_der = map(vel_der,-100,100,pararPulso,pulsoLimite); 
 
  
-    esc_left.write((int)wight_CCW*left_initial_vel);       
-    esc_right.write((int)wight_CW*right_initial_vel); 
+    esc_izquierdo.write((int)peso1*vel_iz);       
+    esc_derecho.write((int)peso2*vel_der); 
 
 
   } 
